@@ -22,7 +22,14 @@ Open the editor
 ---------------
 https://ayanorin.github.io/MagicalCampSaveEditor/
 
-Open that link in Chrome or Edge. Your saves stay on your computer. You can also download this repository and open index.html yourself. That is the same editor.
+Open that link in Chrome or Edge. Your saves stay on your computer.
+
+Download and run it on your computer
+-------------------------------------
+If you want a copy that does not use the website, download the zip from the latest release:
+https://github.com/ayanorin/MagicalCampSaveEditor/releases/latest
+
+Unzip it and open index.html in Chrome or Edge. After that it does not need the internet. Your saves are not uploaded.
 
 The first page has three color schemes. Night is the default: dark, and easier to look at for a while. Eric is the blue menu from early in the game. Erica is the pink menu from the end. The choice is remembered in this browser, and Colors in the top bar changes it later.
 

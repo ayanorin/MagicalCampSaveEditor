@@ -31,7 +31,11 @@ Open that link in Chrome or Edge. Your saves stay on your computer.
 3. Click "Open my game folder" and pick the folder that contains `Game.exe` and `Save01.rvdata2`.
 4. Choose a save slot.
 
-You can also download this repository and open `index.html` yourself. That is the same editor.
+## Download and run it on your computer
+
+If you want a copy that does not use the website, download the zip from the [latest release](https://github.com/ayanorin/MagicalCampSaveEditor/releases/latest).
+
+Unzip it and open `index.html` in Chrome or Edge. After that it does not need the internet. Your saves are not uploaded.
 
 Firefox and Safari cannot write into the game folder. There you open a single `.rvdata2` file, and the edited save (plus a backup of the original) goes to Downloads. Copy it over the original yourself.
 
