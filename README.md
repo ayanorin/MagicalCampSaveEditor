@@ -16,17 +16,22 @@ The wiki and the guide were heavily relied on for information:
 ## What this is
 
 A local, unofficial editor for Magical Camp v0.5 Fin (bugfix 8c) saves.
-The editor does not upload your saves. Open `index.html` in a browser and work on your own machine.
+The editor does not upload your saves. It only runs in your browser.
 
 The first page has three color schemes. Night is the default: dark, and easier to look at for a while. Eric is the blue menu from early in the game. Erica is the pink menu from the end. The choice is remembered in this browser, and Colors in the top bar changes it later.
 
-## How to open
+## Open the editor
+
+[https://ayanorin.github.io/MagicalCampSaveEditor/](https://ayanorin.github.io/MagicalCampSaveEditor/)
+
+Open that link in Chrome or Edge. Your saves stay on your computer.
 
 1. Close the game first (otherwise it can overwrite your edit, or your edit can overwrite its autosave).
-2. Open `index.html` in Chrome or Edge. Those browsers can write the save back into the game folder.
-3. Tick the warning checkbox ("I understand...").
-4. Click "Open my game folder" and pick the folder that contains `Game.exe` and `Save01.rvdata2`.
-5. Choose a save slot.
+2. Tick the warning checkbox ("I understand...").
+3. Click "Open my game folder" and pick the folder that contains `Game.exe` and `Save01.rvdata2`.
+4. Choose a save slot.
+
+You can also download this repository and open `index.html` yourself. That is the same editor.
 
 Firefox and Safari cannot write into the game folder. There you open a single `.rvdata2` file, and the edited save (plus a backup of the original) goes to Downloads. Copy it over the original yourself.
 
