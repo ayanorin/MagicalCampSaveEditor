@@ -299,6 +299,46 @@ window.MC_CURATED = {
   ],
   gallery: { file: 'SavingDataLocal.rvdata2', unlock: 1008, full: 1011, sceneFrom: 1013, sceneTo: 1052 },
 
+  // Spells the story teaches to actor 2 (Erica), who is the party member that casts them.
+  // Skill ids are from this build's Skills list. The bee hive writes Gust and Hurricane.
+  spellActor: 2,
+  spells: [
+    { id: 1347, name: 'Gust', note: 'One foe. Nele\'s fairy wind. The bee hive adds this to Erica. The mermaid caves still block wind spells while you are in them.' },
+    { id: 1348, name: 'Hurricane', note: 'All foes. Nele\'s fairy wind. The bee hive adds this to Erica. The mermaid caves still block wind spells while you are in them.' },
+    { id: 1316, name: 'Magical Shot', note: 'The slime palace and the succubus transformation add this to Erica.' },
+    { id: 1317, name: 'Heart Blast', note: 'Training with the girls, and the succubus transformation, add this to Erica.' },
+    { id: 1320, name: 'Cutie Beam', note: 'The tier-2 change adds this to Erica.' },
+    { id: 1323, name: 'Lovely Lightning', note: 'Isabelle\'s magic upgrades add this to Erica.' },
+    { id: 1326, name: 'Lunar Barricade', note: 'The library adds this to Erica.' },
+    { id: 1327, name: 'Lovely Barricade', note: 'The library adds this to Erica.' },
+    { id: 1331, name: 'Aurora Glow', note: 'Wendy\'s dream room adds this to Erica. While it is on, it seals other magic.' },
+    { id: 1333, name: 'Aurora Burst', note: 'The tier-2 change adds this to Erica.' },
+    { id: 1334, name: 'Mana Burst', note: 'Wendy\'s dream room and the Phyre Tower ritual add this to Erica.' },
+    { id: 1344, name: 'Fire & Ice', note: 'The Phyre Tower ritual adds this to Erica.' },
+    { id: 1346, name: 'Freezing Flames', note: 'The Phyre Tower ritual adds this to Erica.' },
+    { id: 1349, name: 'Entangling Vines', note: 'Tilia adds this to Erica.' },
+    { id: 1350, name: 'Acidic Cloud', note: 'The Phyre Tower ritual adds this to Erica.' },
+    { id: 1351, name: 'Insanity Field', note: 'The Phyre Tower ritual adds this to Erica.' },
+    { id: 1352, name: 'Slime Gown', note: 'The Phyre Tower ritual adds this to Erica.' },
+    { id: 1353, name: 'Unnatural Vitality', note: 'The Phyre Tower ritual adds this to Erica.' },
+    { id: 1354, name: 'Hailstorm', note: 'The Phyre Tower ritual adds this to Erica.' },
+    { id: 1355, name: 'Blade Dance', note: 'The Phyre Tower ritual adds this to Erica.' },
+    { id: 1356, name: 'Ultrasonic Shriek', note: 'The Phyre Tower ritual adds this to Erica.' },
+    { id: 1402, name: 'Cutie Charge (self)', note: 'The cutie transformation adds this to Erica. It gives her TP.' },
+    { id: 1403, name: 'Cutie Charge (party)', note: 'The cutie transformation adds this to Erica. It gives the party TP.' },
+    { id: 1404, name: 'Sparkling Pink Rejuvenation', note: 'The cutie transformation adds this to Erica.' },
+    { id: 1405, name: 'Shiny Restoration', note: 'The cutie transformation adds this to Erica.' },
+    { id: 1428, name: 'Succubus\' Kiss', note: 'The succubus transformation adds this to Erica.' },
+    { id: 1429, name: 'Baleful Fires', note: 'The succubus transformation adds this to Erica.' },
+    { id: 1430, name: 'Seduction', note: 'The succubus transformation adds this to Erica.' },
+    { id: 1510, name: 'Grasp of the Pit', note: 'The Phyre Tower ritual adds this to Erica.' },
+    { id: 1572, name: 'Thermal Drain', note: 'The Phyre Tower ritual adds this to Erica.' },
+    { id: 1655, name: 'Spectral Sword', note: 'The Phyre Tower ritual adds this to Erica.' },
+    { id: 1961, name: 'Succubus Shift', note: 'The first succubus transformation adds this to Erica.' },
+    { id: 1997, name: 'Cutie Magic Transformation', note: 'The cutie power-up adds this to Erica.' },
+    { id: 1998, name: 'Cutie Magic Off', note: 'The cutie transformation adds this to Erica.' }
+  ],
+
   // Names that usually mean "internal bookkeeping" - flagged in manual mode
   internalName: /^(Reserved|Customer\d|Stored|Random|Generic|Enemy\d|ForceAction|Face|Map ?ID|MainCharacter|Choice|Coffin|Mist|TS-|test|Useless|GameOver|Window|Text|FlashCounter|SwitchCounter|EventID|Box|Bookshelf|Food|Warp|Reflection|FaceAssembly|PlayerDirection|MapID)/i,
 

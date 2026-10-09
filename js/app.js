@@ -109,7 +109,7 @@
   /* ------------------------------------------------------------------ state */
 
   function newPend() {
-    return { vars: {}, varText: {}, sw: {}, items: {}, weapons: {}, armors: {}, gold: undefined, actorName: {}, actorNickname: {} };
+    return { vars: {}, varText: {}, sw: {}, items: {}, weapons: {}, armors: {}, gold: undefined, actorName: {}, actorNickname: {}, skills: {} };
   }
   var S = {
     screen: 'welcome', mode: 'easy', tab: 'overview',
@@ -124,6 +124,7 @@
   function pendCount() {
     var n = 0;
     ['vars', 'varText', 'sw', 'items', 'weapons', 'armors', 'actorName', 'actorNickname'].forEach(function (k) { n += keys(P[k]).length; });
+    keys(P.skills).forEach(function (a) { n += keys(P.skills[a]).length; });
     if (P.gold !== undefined) n++;
     return n;
   }
@@ -133,6 +134,9 @@
       if (keys(P[k]).length) ch[k] = P[k];
     });
     if (P.gold !== undefined) ch.gold = P.gold;
+    var sk = {}, anySk = false;
+    keys(P.skills).forEach(function (a) { if (keys(P.skills[a]).length) { sk[a] = P.skills[a]; anySk = true; } });
+    if (anySk) ch.skills = sk;
     var dh = pendingDifficultyHeader();
     if (dh) ch.difficultyHeader = dh;
     return ch;
@@ -572,7 +576,10 @@
   function tabBadge(t) {
     var n = 0;
     if (t === 'relations') C.relationships.forEach(function (r) { if (r.v in P.vars) n++; });
-    else if (t === 'eric') C.progress.concat(C.body, C.mind).forEach(function (r) { if (r.v in P.vars) n++; });
+    else if (t === 'eric') {
+      C.progress.concat(C.body, C.mind).forEach(function (r) { if (r.v in P.vars) n++; });
+      if (P.skills[C.spellActor]) n += keys(P.skills[C.spellActor]).length;
+    }
     else if (t === 'give' || t === 'inventory') n = keys(P.items).length + keys(P.weapons).length + keys(P.armors).length + (t === 'inventory' && P.gold !== undefined ? 1 : 0);
     else if (t === 'toggles') C.toggles.forEach(function (x) { if (x.sw in P.sw) n++; });
     else if (t === 'hidden') {
@@ -608,6 +615,19 @@
     function actor(id) { return acts.filter(function (a) { return a.id === +id; })[0] || {}; }
     keys(P.actorName).forEach(function (id) { out.push({ label: 'Name of actor ' + id, from: '"' + actor(id).name + '"', to: '"' + P.actorName[id] + '"', revert: function () { delete P.actorName[id]; } }); });
     keys(P.actorNickname).forEach(function (id) { out.push({ label: 'Nickname of ' + (actor(id).name || 'actor ' + id), from: '"' + actor(id).nickname + '"', to: '"' + P.actorNickname[id] + '"', revert: function () { delete P.actorNickname[id]; } }); });
+    keys(P.skills).forEach(function (actorId) {
+      keys(P.skills[actorId]).forEach(function (id) {
+        var sp = null;
+        C.spells.forEach(function (s) { if (s.id === +id) sp = s; });
+        var who = actor(+actorId).name || ('actor ' + actorId);
+        out.push({
+          label: (sp ? sp.name : ('Spell ' + id)) + '  (' + who + ')',
+          from: S.sf.getSkills(+actorId).indexOf(+id) >= 0 ? 'Known' : 'Not known',
+          to: P.skills[actorId][id] ? 'Known' : 'Not known',
+          revert: function () { delete P.skills[actorId][id]; }
+        });
+      });
+    });
     return out;
   }
 
@@ -712,8 +732,45 @@
       sec[1].forEach(function (r) { card.appendChild(varRow(r)); });
       page.appendChild(card);
     });
+    page.appendChild(spellCard());
     page.appendChild(h('div', { class: 'card explain' }, h('b', {}, 'Note: '), 'Many of these values are only turned into sprites, outfits and dialogue when the matching story event runs (for example a transformation scene or the mirror). If nothing visibly changes right away, that is why. Unsure about a value? Look it up in Manual mode, where each entry lists the events that read and write it.'));
     return page;
+  }
+
+  function knownSkill(id) {
+    var list = S.sf.getSkills(C.spellActor);
+    var orig = !!(list && list.indexOf(id) >= 0);
+    var pend = P.skills[C.spellActor];
+    if (pend && (id in pend)) return !!pend[id];
+    return orig;
+  }
+  function setSkill(id, on) {
+    var actorId = C.spellActor;
+    var list = S.sf.getSkills(actorId) || [];
+    var orig = list.indexOf(id) >= 0;
+    if (!P.skills[actorId]) P.skills[actorId] = {};
+    if (!!on === orig) delete P.skills[actorId][id];
+    else P.skills[actorId][id] = !!on;
+  }
+  function spellCard() {
+    var card = h('div', { class: 'listcard' }, h('h3', {}, 'Spells'));
+    var known = S.sf.getSkills(C.spellActor);
+    if (!known) {
+      card.appendChild(h('p', { class: 'desc' }, 'This save does not keep Erica\'s spells as a simple list, so they were left unchanged.'));
+      return card;
+    }
+    card.appendChild(h('p', { class: 'desc', style: 'padding:0 12px' }, 'These are spells the story teaches to Erica, the character who is in your party and casts them. Turning one on adds it to her spell list. It does not play the scene that normally teaches it.'));
+    C.spells.forEach(function (sp) {
+      var row = h('div', { class: 'row' });
+      function upd() { row.classList.toggle('changed', !!(P.skills[C.spellActor] && sp.id in P.skills[C.spellActor])); }
+      var tg = toggle(knownSkill(sp.id), sp.name, function (v) { setSkill(sp.id, v); upd(); chrome(); });
+      row.appendChild(h('div', {}, h('div', { class: 'name' }, sp.name), h('div', { class: 'hint' }, 'Spell ' + sp.id)));
+      row.appendChild(h('div', { class: 'desc' }, sp.note));
+      row.appendChild(h('div', { class: 'ctl' }, tg));
+      upd();
+      card.appendChild(row);
+    });
+    return card;
   }
 
   /* ---- give items ---- */

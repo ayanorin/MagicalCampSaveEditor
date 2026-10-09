@@ -47,7 +47,7 @@ What you can edit
 Easy mode:
   Overview          names and Eric(a)'s current title
   Relationships     affection for Natalie, Isabelle, Veronica, Alice, Wendy, Catherine, Marianne, Belle
-  Eric(a)           Acceptance, GirlScore, body values
+  Eric(a)           Acceptance, GirlScore, body values, and the spells the story teaches Erica (including Gust and Hurricane)
   Give items        searchable catalog of items, key items, weapons and armor
   Inventory & gold  everything you already own, plus gold
   Quick toggles     grouped on/off flags for missed scenes, shops, dungeons and lockouts (Enmaided!, Tilia timer, Giselle, and so on)

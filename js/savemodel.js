@@ -101,6 +101,23 @@
     return out;
   };
 
+  /**
+   * Skill ids Erica (or another actor) already knows, in the save's order.
+   * Returns null if that actor's spell list is not a plain list of numbers.
+   */
+  SaveFile.prototype.getSkills = function (actorId) {
+    var a = this.actors && this.actors.a[actorId];
+    if (!a || a.t !== 'obj') return null;
+    var sk = ivar(a, '@skills');
+    if (!sk || sk.t !== 'arr') return null;
+    var ids = [];
+    for (var i = 0; i < sk.a.length; i++) {
+      if (!sk.a[i] || sk.a[i].t !== 'int') return null;
+      ids.push(sk.a[i].v);
+    }
+    return ids;
+  };
+
   SaveFile.prototype.getActors = function () {
     var list = [];
     if (!this.actors || this.actors.t !== 'arr') return list;
@@ -231,6 +248,30 @@
       if (!dh || dh.t !== 'str') throw fail('This save has no difficulty label to update.');
       planString(dh, ch.difficultyHeader, edits);
     }
+    if (ch.skills) {
+      Object.keys(ch.skills).forEach(function (actorId) {
+        var want = ch.skills[actorId];
+        var a = self.actors && self.actors.a[actorId];
+        if (!a || a.t !== 'obj') throw fail('Actor ' + actorId + ' was not found, so no spells were changed.');
+        var sk = ivar(a, '@skills');
+        if (!sk || sk.t !== 'arr') throw fail('Actor ' + actorId + '\'s spells are stored in an unexpected way, so they were left unchanged.');
+        var cur = [];
+        for (var i = 0; i < sk.a.length; i++) {
+          if (!sk.a[i] || sk.a[i].t !== 'int') throw fail('A learned spell is stored in an unexpected way, so the spell list was left unchanged.');
+          cur.push(sk.a[i].v);
+        }
+        var set = {};
+        cur.forEach(function (id) { set[id] = true; });
+        Object.keys(want).forEach(function (id) { if (want[id]) set[id] = true; else delete set[id]; });
+        var next = Object.keys(set).map(Number).sort(function (x, y) { return x - y; });
+        var same = next.length === cur.length;
+        for (var j = 0; same && j < next.length; j++) if (next[j] !== cur[j]) same = false;
+        if (same) return;
+        var bytes = M.encInt(next.length);
+        next.forEach(function (id) { bytes = bytes.concat(M.encFixnum(id)); });
+        edits.push({ s: sk.cntS, e: sk.e, b: bytes });
+      });
+    }
     return edits;
   };
 
@@ -281,7 +322,17 @@
     if (ch.actorName) Object.keys(ch.actorName).forEach(function (i) { add('top1{actors}.@data[' + i + '].@name'); });
     if (ch.actorNickname) Object.keys(ch.actorNickname).forEach(function (i) { add('top1{actors}.@data[' + i + '].@nickname'); });
     if (typeof ch.difficultyHeader === 'string') add('top0{difficulty}');
-    return set;
+    function allows(k) {
+      if (set.has(k)) return true;
+      if (!ch.skills) return false;
+      var ids = Object.keys(ch.skills);
+      for (var i = 0; i < ids.length; i++) {
+        var p = 'top1{actors}.@data[' + ids[i] + '].@skills';
+        if (k === p || k.indexOf(p + '[') === 0) return true;
+      }
+      return false;
+    }
+    return { set: set, allows: allows };
   }
 
   /**
@@ -301,10 +352,10 @@
 
     var a = flatMap(this), b = flatMap(nf), allowed = allowedPaths(ch);
     var bad = [];
-    a.forEach(function (v, k) { if (!allowed.has(k) && b.get(k) !== v) bad.push(k); });
+    a.forEach(function (v, k) { if (!allowed.allows(k) && b.get(k) !== v) bad.push(k); });
     var oldLens = { variables: this.vr.a.length, switches: this.sw.a.length };
     b.forEach(function (v, k) {
-      if (allowed.has(k) || a.has(k)) return;
+      if (allowed.allows(k) || a.has(k)) return;
       var m = /^top1\{(variables|switches)\}\.@data\[(\d+)\]$/.exec(k); // slots created by growing the array
       if (m && +m[2] >= oldLens[m[1]]) return;
       bad.push(k);
@@ -329,6 +380,15 @@
         var act = acts.filter(function (x) { return x.id === +i; })[0];
         var val = act ? (kind === 'actorName' ? act.name : act.nickname) : null;
         if (val !== ch[kind][i]) errs.push(kind + ' ' + i);
+      });
+    });
+    if (ch.skills) Object.keys(ch.skills).forEach(function (actorId) {
+      var have = {};
+      var known = nf.getSkills(+actorId);
+      if (!known) { errs.push('spells ' + actorId); return; }
+      known.forEach(function (id) { have[id] = true; });
+      Object.keys(ch.skills[actorId]).forEach(function (id) {
+        if (!!have[id] !== !!ch.skills[actorId][id]) errs.push('spell ' + id);
       });
     });
     if (errs.length) throw fail('Verification failed: values did not read back correctly (' + errs.join(', ') + ').');
