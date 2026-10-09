@@ -1,0 +1,50 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>dev tests</title>
+<pre id="out">running...</pre>
+<script src="../js/marshal.js"></script>
+<script src="../js/savemodel.js"></script>
+<script src="testdata.js"></script>
+<script>
+(function () {
+  var log = [];
+  function L(s) { log.push(s); }
+  function b64(s) { var bin = atob(s), u = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u; }
+  function same(a, b) { if (a.length !== b.length) return false; for (var i = 0; i < a.length; i++) if (a[i] !== b[i]) return false; return true; }
+  function T(name, fn) { try { var r = fn(); L((r === true ? 'PASS ' : 'FAIL ') + name + (r === true ? '' : ' -> ' + r)); } catch (e) { L('ERROR ' + name + ': ' + e.message); } }
+  var t0 = performance.now();
+  var orig = b64(TEST_B64.orig), wig = b64(TEST_B64.wig), s06 = b64(TEST_B64.save06);
+  var so, sw, s6;
+  T('parse orig', function () { so = new SaveFile(orig, 'orig'); L(JSON.stringify(so.headerInfo())); L('var13=' + JSON.stringify(so.getVar(13)) + ' sw95=' + so.getSwitch(95) + ' gold=' + so.getGold() + ' vars=' + so.varCount() + ' sws=' + so.switchCount()); return true; });
+  T('parse wig', function () { sw = new SaveFile(wig, 'wig'); L('wig var13=' + sw.getVar(13).value + ' items399=' + sw.getInventory('items')[399]); return true; });
+  T('parse save06', function () { s6 = new SaveFile(s06, 's06'); L(JSON.stringify(s6.headerInfo())); L(JSON.stringify(s6.getActors().slice(0, 3))); return true; });
+  T('orig + var13 + wig == wig file (byte-exact)', function () {
+    var r = so.applyChanges({ vars: { 13: sw.getVar(13).value }, items: { 399: 1 } });
+    return same(r.bytes, wig) ? true : 'bytes differ: ' + r.bytes.length + ' vs ' + wig.length;
+  });
+  T('wig -> remove wig + switch95 verified', function () {
+    var r = sw.applyChanges({ items: { 399: 0 }, sw: { 95: true } });
+    return r.file.getSwitch(95) && !r.file.getInventory('items')[399] ? true : 'readback';
+  });
+  T('save06 multi edit + revert byte-exact', function () {
+    var a = s6.getActors()[0];
+    var ch = { vars: { 88: 15, 18: 3 }, sw: { 95: true, 212: true }, gold: 12345, items: { 399: 5, 2: 99 }, weapons: { 35: 1 }, armors: { 63: 2 }, actorNickname: { 1: 'Test Nick \u2764' } };
+    var r = s6.applyChanges(ch);
+    L('multi edit size delta ' + (r.bytes.length - s06.length));
+    var rev = r.file.applyChanges({ vars: { 88: s6.getVar(88).value, 18: s6.getVar(18).value }, sw: { 95: s6.getSwitch(95), 212: s6.getSwitch(212) }, gold: s6.getGold(),
+      items: { 399: s6.getInventory('items')[399] || 0, 2: s6.getInventory('items')[2] || 0 }, weapons: { 35: s6.getInventory('weapons')[35] || 0 }, armors: { 63: s6.getInventory('armors')[63] || 0 }, actorNickname: { 1: a.nickname } });
+    return same(rev.bytes, s06) ? true : 'revert not identical (' + rev.bytes.length + ' vs ' + s06.length + ')';
+  });
+  T('var extension error free (index beyond)', function () {
+    var r = s6.applyChanges({ vars: { 5005: 7 } });
+    return r.file.getVar(5005).value === 7 && r.file.varCount() === 5006 ? true : 'bad';
+  });
+  T('bad value rejected', function () { try { s6.applyChanges({ vars: { 3: 99999999999 } }); return 'no error'; } catch (e) { return true; } });
+  T('text nickname non-ascii roundtrip', function () {
+    var r = s6.applyChanges({ actorName: { 1: '\u30a8\u30ea\u30c3\u30af' } });
+    return r.file.getActors()[0].name === '\u30a8\u30ea\u30c3\u30af' ? true : 'bad';
+  });
+  L('elapsed ' + Math.round(performance.now() - t0) + ' ms');
+  document.getElementById('out').textContent = log.join('\n');
+})();
+</script>

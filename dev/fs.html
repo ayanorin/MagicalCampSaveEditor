@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>fs flow</title>
+<link rel="stylesheet" href="../css/style.css"></head><body>
+<div id="app"></div><div id="toasts"></div><pre id="res" style="position:fixed;left:0;top:0;right:0;bottom:0;background:#000;color:#0f0;z-index:1000;overflow:auto;margin:0;padding:8px">running...</pre>
+<script src="../data/gamedata.js"></script><script src="../data/curated.js"></script>
+<script src="../js/marshal.js"></script><script src="../js/savemodel.js"></script><script src="../js/storage.js"></script>
+<script src="../js/app.js"></script><script src="testdata.js"></script>
+<script>
+(async function () {
+  var log = [];
+  function L(s) { log.push(s); document.getElementById('res').textContent = log.join('\n'); }
+  window.addEventListener('error', function (e) { L('JS ERROR ' + e.message + ' @' + e.lineno); });
+  function b64(s) { var bin = atob(s), u = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u; }
+  function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+  function btn(text) { var all = document.querySelectorAll('button, summary'); for (var i = 0; i < all.length; i++) if (all[i].textContent.trim().indexOf(text) === 0) return all[i]; return null; }
+  async function click(text, wait) { var b = btn(text); if (!b) throw new Error('no button: ' + text); b.click(); await sleep(wait || 80); }
+  function same(a, b) { if (a.length !== b.length) return false; for (var i = 0; i < a.length; i++) if (a[i] !== b[i]) return false; return true; }
+  function check(name, ok, extra) { L((ok ? 'PASS ' : 'FAIL ') + name + (extra ? ' ' + extra : '')); }
+
+  // ---- fake File System Access API
+  function nf() { var e = new Error('not found'); e.name = 'NotFoundError'; return e; }
+  function FakeFile(name, bytes) { this.kind = 'file'; this.name = name; this.data = bytes; this.mod = Date.now(); }
+  FakeFile.prototype.getFile = async function () { var d = this.data, m = this.mod; return { size: d.length, lastModified: m, arrayBuffer: async function () { return d.buffer.slice(d.byteOffset, d.byteOffset + d.byteLength); } }; };
+  FakeFile.prototype.createWritable = async function () { var self = this, chunks = []; return { write: async function (b) { chunks.push(new Uint8Array(b)); }, abort: async function () {}, close: async function () { var n = 0; chunks.forEach(function (c) { n += c.length; }); var o = new Uint8Array(n), p = 0; chunks.forEach(function (c) { o.set(c, p); p += c.length; }); self.data = o; self.mod = Date.now(); } }; };
+  function FakeDir(name) { this.kind = 'directory'; this.name = name; this.map = {}; }
+  FakeDir.prototype.entries = function () { var m = this.map, ks = Object.keys(m); return (async function* () { for (var i = 0; i < ks.length; i++) yield [ks[i], m[ks[i]]]; })(); };
+  FakeDir.prototype.getFileHandle = async function (n, o) { if (!this.map[n]) { if (o && o.create) this.map[n] = new FakeFile(n, new Uint8Array(0)); else throw nf(); } return this.map[n]; };
+  FakeDir.prototype.getDirectoryHandle = async function (n, o) { if (!this.map[n]) { if (o && o.create) this.map[n] = new FakeDir(n); else throw nf(); } return this.map[n]; };
+
+  var orig = b64(TEST_B64.orig);
+  var game = new FakeDir('MagicalCamp_0.5');
+  game.map['Save19.rvdata2'] = new FakeFile('Save19.rvdata2', orig.slice());
+  game.map['Save06.rvdata2'] = new FakeFile('Save06.rvdata2', b64(TEST_B64.save06));
+  game.map['Game.exe'] = new FakeFile('Game.exe', new Uint8Array(3));
+  game.map['Save19.rvdata2.bak'] = new FakeFile('Save19.rvdata2.bak', orig.slice());
+  Store.pickFolder = async function () { return game; };
+
+  var ack = document.getElementById('ack'); ack.checked = true; ack.dispatchEvent(new Event('change', { bubbles: true }));
+  await click('Open my game folder', 400);
+  var slotBtns = document.querySelectorAll('.slot');
+  check('2 slots listed (no .bak/Game.exe)', slotBtns.length === 2, 'got ' + slotBtns.length);
+  await click('Save19', 400);
+  check('editor open', !!document.querySelector('.shell'));
+
+  // edit 1: wig + var
+  await click('Relationships');
+  var inputs = document.querySelectorAll('.row input[type=number]');
+  inputs[2].value = '4'; inputs[2].dispatchEvent(new Event('change', { bubbles: true }));
+  await click('Give items'); await click('Key items');
+  var s = document.querySelector('input[type=search]'); s.value = 'wig'; s.dispatchEvent(new Event('input', { bubbles: true })); await sleep(300);
+  await click('Add to save');
+  await click('Save changes', 600);
+  var bk = game.map['SaveEditorBackups'];
+  check('backup folder created', !!bk);
+  var names = bk ? Object.keys(bk.map) : [];
+  check('1 backup, equals original', names.length === 1 && same(bk.map[names[0]].data, orig), names.join(','));
+  var after1 = game.map['Save19.rvdata2'].data;
+  var sf1 = new SaveFile(after1, 'x');
+  check('save written with edits', sf1.getVar(13).value === 4 && sf1.getInventory('items')[399] === 1);
+  check('.bak untouched', same(game.map['Save19.rvdata2.bak'].data, orig));
+  check('Save06 untouched', same(game.map['Save06.rvdata2'].data, b64(TEST_B64.save06)));
+  check('queue empty after save', document.querySelector('.bar .count').textContent === 'No changes queued');
+
+  // edit 2
+  await click('Quick toggles');
+  var tg = document.querySelector('.toggle input'); tg.checked = true; tg.dispatchEvent(new Event('change', { bubbles: true }));
+  await sleep(1100); // backup file names have 1s resolution
+  await click('Save changes', 600);
+  names = Object.keys(bk.map);
+  check('2 backups', names.length === 2, names.join(','));
+  var sf2 = new SaveFile(game.map['Save19.rvdata2'].data, 'x');
+  check('switch95 saved + earlier edits kept', sf2.getSwitch(95) && sf2.getVar(13).value === 4 && sf2.getInventory('items')[399] === 1);
+  check('second backup equals first edit', names.some(function (n) { return same(bk.map[n].data, after1); }));
+
+  // external change on disk -> refuse
+  var before = game.map['Save19.rvdata2'].data;
+  var ext = before.slice(); ext[ext.length - 1] ^= 1; game.map['Save19.rvdata2'].data = ext;
+  await click('Eric(a)'.replace('Eric(a)', 'Relationships'));
+  var inputs2 = document.querySelectorAll('.row input[type=number]');
+  inputs2[0].value = '5'; inputs2[0].dispatchEvent(new Event('change', { bubbles: true }));
+  await click('Save changes', 600);
+  check('refuses when file changed on disk', same(game.map['Save19.rvdata2'].data, ext) && !!document.querySelector('.modal'));
+  document.querySelector('.modal .btn').click();
+  game.map['Save19.rvdata2'].data = before;
+
+  // restore original from backup
+  await click('Backups', 600);
+  var rows = document.querySelectorAll('.listcard .row');
+  check('backups listed', rows.length === 2, 'rows ' + rows.length);
+  // restore the one that equals the original
+  var target = null;
+  rows.forEach(function (r) { var n = r.querySelector('.mono').textContent; if (same(bk.map[n].data, orig)) target = r; });
+  target.querySelector('button').click(); await sleep(100);
+  document.querySelector('.modal-bg .actions .btn:last-child').click(); await sleep(900);
+  check('restore wrote original back', same(game.map['Save19.rvdata2'].data, orig));
+  check('restore backed up the pre-restore file', Object.keys(bk.map).length === 3);
+  L('DONE');
+})();
+</script></body></html>

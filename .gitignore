@@ -1,0 +1,7 @@
+*.rvdata2
+SaveEditorBackups/
+dev/testdata.js
+dev/s_*.png
+Thumbs.db
+Desktop.ini
+.DS_Store

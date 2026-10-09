@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Magical Camp Save Editor</title>
+<script>
+try {
+  var t = localStorage.getItem('mcse_theme');
+  document.documentElement.setAttribute('data-theme', (t === 'eric' || t === 'erica' || t === 'night') ? t : 'night');
+} catch (e) {
+  document.documentElement.setAttribute('data-theme', 'night');
+}
+</script>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app"><noscript>This editor needs JavaScript enabled.</noscript></div>
+<div id="toasts" aria-live="polite"></div>
+
+<script src="data/gamedata.js"></script>
+<script src="data/curated.js"></script>
+<script src="js/marshal.js"></script>
+<script src="js/savemodel.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

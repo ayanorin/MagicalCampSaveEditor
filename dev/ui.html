@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ui dev</title>
+<link rel="stylesheet" href="../css/style.css">
+</head><body>
+<div id="app"></div><div id="toasts"></div>
+<script src="../data/gamedata.js"></script>
+<script src="../data/curated.js"></script>
+<script src="../js/marshal.js"></script>
+<script src="../js/savemodel.js"></script>
+<script src="../js/storage.js"></script>
+<script src="../js/app.js"></script>
+<script src="testdata.js"></script>
+<script>
+(function () {
+  var q = new URLSearchParams(location.search);
+  function b64(s) { var bin = atob(s), u = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u; }
+  var err = [];
+  window.addEventListener('error', function (e) { err.push(e.message + ' @' + e.filename + ':' + e.lineno); var d = document.createElement('pre'); d.style.cssText = 'position:fixed;bottom:0;left:0;background:#900;color:#fff;z-index:99;padding:6px'; d.textContent = err.join('\n'); document.body.appendChild(d); });
+  var which = q.get('save');
+  if (!which) return;
+  window.__mcse.openBytes({ name: 'Save19.rvdata2', bytes: b64(TEST_B64[which]), handle: null });
+  function btn(text) { var all = document.querySelectorAll('button, summary'); for (var i = 0; i < all.length; i++) if (all[i].textContent.trim().indexOf(text) === 0) return all[i]; return null; }
+  var steps = JSON.parse(q.get('steps') || '[]');
+  if (!Array.isArray(steps)) steps = [steps];
+  var t = 400;
+  steps.forEach(function (s) {
+    setTimeout(function () {
+      try {
+        if (s.click) { var b = btn(s.click); if (!b) throw new Error('no button ' + s.click); b.click(); }
+        if (s.type) { var el = document.querySelector(s.type[0]); if (!el) throw new Error('no el ' + s.type[0]); el.value = s.type[1]; el.dispatchEvent(new Event(s.ev || 'input', { bubbles: true })); }
+        if (s.set) { var el2 = document.querySelectorAll(s.set[0])[s.set[2] || 0]; if (!el2) throw new Error('no el ' + s.set[0]); el2.value = s.set[1]; el2.dispatchEvent(new Event('change', { bubbles: true })); }
+        if (s.check) { var c = document.querySelectorAll(s.check)[s.idx || 0]; c.checked = !c.checked; c.dispatchEvent(new Event('change', { bubbles: true })); }
+      } catch (e) { err.push(String(e)); document.title = 'ERR ' + err.join('|'); }
+    }, t);
+    t += 250;
+  });
+})();
+</script>
+</body></html>

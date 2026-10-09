@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>flow</title>
+<link rel="stylesheet" href="../css/style.css"></head><body>
+<div id="app"></div><div id="toasts"></div><pre id="res" style="position:fixed;left:0;top:0;right:0;bottom:0;background:#000;color:#0f0;z-index:1000;overflow:auto;margin:0;padding:8px">running...</pre>
+<script src="../data/gamedata.js"></script><script src="../data/curated.js"></script>
+<script src="../js/marshal.js"></script><script src="../js/savemodel.js"></script><script src="../js/storage.js"></script>
+<script src="../js/app.js"></script><script src="testdata.js"></script>
+<script>
+(async function () {
+  var log = [];
+  function L(s) { log.push(s); document.getElementById('res').textContent = log.join('\n'); }
+  window.addEventListener('error', function (e) { L('JS ERROR ' + e.message + ' @' + e.lineno); });
+  function b64(s) { var bin = atob(s), u = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u; }
+  function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+  function btn(text) { var all = document.querySelectorAll('button, summary'); for (var i = 0; i < all.length; i++) if (all[i].textContent.trim().indexOf(text) === 0) return all[i]; return null; }
+  async function click(text) { var b = btn(text); if (!b) throw new Error('no button: ' + text); b.click(); await sleep(60); }
+  function same(a, b) { if (a.length !== b.length) return false; for (var i = 0; i < a.length; i++) if (a[i] !== b[i]) return false; return true; }
+  function check(name, ok, extra) { L((ok ? 'PASS ' : 'FAIL ') + name + (extra ? ' ' + extra : '')); }
+
+  var downloads = [];
+  Store.download = function (name, bytes) { downloads.push({ name: name, bytes: bytes }); };
+  var orig = b64(TEST_B64.orig);
+  __mcse.openBytes({ name: 'Save19.rvdata2', bytes: orig, handle: null });
+  await sleep(200);
+
+  // Relationships: set Veronica (3rd row) to 4
+  await click('Relationships');
+  var inputs = document.querySelectorAll('.row input[type=number]');
+  inputs[2].value = '4'; inputs[2].dispatchEvent(new Event('change', { bubbles: true }));
+  // Give wig
+  await click('Give items'); await click('Key items');
+  var s = document.querySelector('input[type=search]'); s.value = 'wig'; s.dispatchEvent(new Event('input', { bubbles: true })); await sleep(300);
+  await click('Add to save');
+  // toggle Enmaided! (not the first switch - the list is grouped now)
+  await click('Quick toggles');
+  var rows = document.querySelectorAll('.row');
+  var enmaided = null;
+  for (var i = 0; i < rows.length; i++) {
+    var nm = rows[i].querySelector('.name');
+    if (nm && nm.textContent.indexOf('Enmaided') === 0) { enmaided = rows[i].querySelector('.toggle input'); break; }
+  }
+  if (!enmaided) throw new Error('no Enmaided toggle');
+  enmaided.checked = true; enmaided.dispatchEvent(new Event('change', { bubbles: true }));
+  // gold via inventory +1,000
+  await click('Inventory'); await click('+1,000');
+  // overview nickname
+  await click('Overview');
+  var nick = document.querySelectorAll('.row input[type=text]')[0]; nick.value = 'Test \u2764 Title'; nick.dispatchEvent(new Event('input', { bubbles: true }));
+  check('pending count', __mcse.S && document.querySelector('.bar .count').textContent.indexOf('5 queued') === 0, document.querySelector('.bar .count').textContent);
+
+  await click('Save changes'); await sleep(1200);
+  check('2 downloads (backup + edited)', downloads.length === 2, 'got ' + downloads.length);
+  if (downloads.length === 2) {
+    check('backup name pattern', /^Save19_\d{4}-\d\d-\d\d_\d\d-\d\d-\d\d\.rvdata2$/.test(downloads[0].name), downloads[0].name);
+    check('backup equals original', same(downloads[0].bytes, orig));
+    var e = new SaveFile(downloads[1].bytes, 'x');
+    check('edited parses; var13=4', e.getVar(13).value === 4, String(e.getVar(13).value));
+    check('wig present', e.getInventory('items')[399] === 1);
+    check('switch95 on', e.getSwitch(95) === true);
+    check('gold +1000', e.getGold() === new SaveFile(orig, 'o').getGold() + 1000, String(e.getGold()));
+    check('nickname', e.getActors()[0].nickname === 'Test \u2764 Title', e.getActors()[0].nickname);
+  }
+  check('toast / modal shown', !!document.querySelector('.modal'), '');
+
+  var sample = '[{88=>false, 1001=>true, 1008=>false}, {1001=>0, 1002=>4}]';
+  check('public roundtrip', Store.formatPublic(Store.parsePublic(sample)) === sample);
+  var parsed = Store.parsePublic(sample);
+  parsed.sw['1008'] = 'true';
+  parsed.sw['1011'] = 'true';
+  for (var gs = 1013; gs <= 1052; gs++) parsed.sw[String(gs)] = 'true';
+  var formatted = Store.formatPublic(parsed);
+  check('public keeps other values', formatted.indexOf('88=>false') >= 0 && formatted.indexOf('1002=>4') >= 0 && formatted.indexOf('1001=>true') >= 0);
+  check('public sets gallery', formatted.indexOf('1008=>true') >= 0 && formatted.indexOf('1011=>true') >= 0 && formatted.indexOf('1052=>true') >= 0);
+  check('public shape', formatted.charAt(0) === '[' && formatted.slice(-2) === '}]' && formatted.split('}, {').length === 2);
+  var junk = false;
+  try { Store.parsePublic('not a file'); } catch (e) { junk = true; }
+  check('public rejects junk', junk);
+
+  var closeBtn = document.querySelector('.modal .primary, .modal button');
+  if (closeBtn) closeBtn.click();
+  await click('Hidden content');
+  await sleep(100);
+  var gstat = document.querySelector('[data-role=gallery-status]');
+  check('gallery needs folder', !!(gstat && gstat.textContent.indexOf('game folder') >= 0), gstat ? gstat.textContent.slice(0, 90) : 'missing');
+  check('gallery write disabled', !!document.querySelector('[data-role=gallery-write]').disabled);
+  var sel = document.querySelector('select[data-role=difficulty]');
+  var next = sel.value === '7' ? '6' : '7';
+  var expectName = next === '7' ? 'Nope' : 'Lunatic';
+  sel.value = next;
+  sel.dispatchEvent(new Event('change', { bubbles: true }));
+  ['items-998', 'armors-46', 'weapons-70', 'weapons-71', 'weapons-72', 'weapons-73', 'weapons-74'].forEach(function (id) {
+    var b = document.querySelector('[data-grant="' + id + '"]');
+    if (b && !b.disabled) b.click();
+  });
+  check('hidden queued', document.querySelector('.bar .count').textContent.indexOf('8 queued') === 0, document.querySelector('.bar .count').textContent);
+  await click('Save changes');
+  await sleep(1200);
+  check('hidden save downloaded', downloads.length === 4, 'got ' + downloads.length);
+  if (downloads.length >= 4) {
+    var e2 = new SaveFile(downloads[3].bytes, 'x');
+    check('difficulty var', e2.getVar(301).value === +next, String(e2.getVar(301).value));
+    check('difficulty label', e2.headerInfo().difficulty === expectName, JSON.stringify(e2.headerInfo().difficulty));
+    check('tf manipulator', e2.getInventory('items')[998] === 1);
+    check('varek core', e2.getInventory('armors')[46] === 1);
+    check('umbrella blade', e2.getInventory('weapons')[70] === 1);
+    check('wakizashi', e2.getInventory('weapons')[74] === 1);
+  }
+  L('DONE');
+})();
+</script></body></html>
